@@ -13,7 +13,7 @@ public final class LwjglPreviewCanvas extends AWTGLCanvas {
 
     public LwjglPreviewCanvas() {
         super(createCanvasData());
-        setPreferredSize(new Dimension(480, 320));
+        setPreferredSize(new Dimension(560, 360));
         Timer repaintTimer = new Timer(16, event -> {
             if (isDisplayable()) {
                 repaint();
@@ -40,6 +40,8 @@ public final class LwjglPreviewCanvas extends AWTGLCanvas {
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
         GL11.glLineWidth(1.5f);
     }
 
@@ -47,41 +49,168 @@ public final class LwjglPreviewCanvas extends AWTGLCanvas {
     public void paintGL() {
         int width = Math.max(getWidth(), 1);
         int height = Math.max(getHeight(), 1);
-        float aspect = (float) width / (float) height;
+        int mainWidth = Math.max((int) (width * 0.74f), 1);
+        int sideWidth = Math.max(width - mainWidth, 1);
         rotation += 0.8f;
 
-        float backgroundShift = importedModel == null ? 0.18f : Math.min(importedModel.meshCount() * 0.06f, 0.32f);
-        GL11.glViewport(0, 0, width, height);
-        GL11.glClearColor(0.08f + backgroundShift, 0.10f, 0.16f + backgroundShift, 1.0f);
+        GL11.glClearColor(0.06f, 0.08f, 0.13f, 1.0f);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
 
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glLoadIdentity();
-        GL11.glFrustum(-aspect, aspect, -1.0, 1.0, 2.0, 40.0);
-
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glLoadIdentity();
-        GL11.glTranslatef(0.0f, -0.5f, -8.0f);
-
-        drawFloorGrid();
-
-        GL11.glTranslatef(0.0f, 1.1f, 0.0f);
-        GL11.glRotatef(rotation, 0.0f, 1.0f, 0.0f);
-        GL11.glRotatef(20.0f, 1.0f, 0.0f, 0.0f);
-        drawPreviewCube();
+        renderMainPreview(mainWidth, height);
+        renderSideMap(mainWidth, sideWidth, height);
 
         swapBuffers();
     }
 
+    private void renderMainPreview(int width, int height) {
+        float aspect = (float) width / (float) Math.max(height, 1);
+        float backgroundShift = importedModel == null ? 0.08f : Math.min(importedModel.meshCount() * 0.04f, 0.20f);
+
+        GL11.glViewport(0, 0, width, height);
+        GL11.glScissor(0, 0, width, height);
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glClearColor(0.08f + backgroundShift, 0.10f, 0.16f + backgroundShift, 1.0f);
+        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glLoadIdentity();
+        GL11.glFrustum(-aspect, aspect, -1.0, 1.0, 2.0, 45.0);
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glLoadIdentity();
+        GL11.glTranslatef(0.0f, -0.15f, -12.0f);
+        GL11.glRotatef(18.0f, 1.0f, 0.0f, 0.0f);
+
+        drawBackdropPanel();
+        drawBaseplate();
+        drawFloorGrid();
+
+        GL11.glPushMatrix();
+        GL11.glTranslatef(0.0f, 1.35f, 0.0f);
+        GL11.glRotatef(rotation, 0.0f, 1.0f, 0.0f);
+        GL11.glRotatef(18.0f, 1.0f, 0.0f, 0.0f);
+        drawPreviewCube();
+        GL11.glPopMatrix();
+    }
+
+    private void renderSideMap(int xOffset, int width, int height) {
+        GL11.glViewport(xOffset, 0, width, height);
+        GL11.glScissor(xOffset, 0, width, height);
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glClearColor(0.11f, 0.13f, 0.19f, 1.0f);
+        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glLoadIdentity();
+        GL11.glOrtho(-7.0, 7.0, -7.0, 7.0, -20.0, 20.0);
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glLoadIdentity();
+        GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+
+        drawMiniMapBackdrop();
+        drawMiniMapPlate();
+        drawMiniMapGrid();
+        drawMiniMapMarker();
+    }
+
+    private void drawBackdropPanel() {
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glColor4f(0.10f, 0.12f, 0.18f, 1.0f);
+        GL11.glVertex3f(-8.0f, 6.0f, -18.0f);
+        GL11.glVertex3f(8.0f, 6.0f, -18.0f);
+        GL11.glColor4f(0.06f, 0.08f, 0.13f, 1.0f);
+        GL11.glVertex3f(8.0f, -3.5f, -18.0f);
+        GL11.glVertex3f(-8.0f, -3.5f, -18.0f);
+        GL11.glEnd();
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+    }
+
+    private void drawBaseplate() {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(0.0f, -0.02f, 0.0f);
+        GL11.glColor4f(0.18f, 0.22f, 0.30f, 1.0f);
+        GL11.glBegin(GL11.GL_QUADS);
+        vertex(-5.5f, 0.0f, -5.5f);
+        vertex(5.5f, 0.0f, -5.5f);
+        vertex(5.5f, 0.0f, 5.5f);
+        vertex(-5.5f, 0.0f, 5.5f);
+        GL11.glEnd();
+
+        GL11.glColor4f(0.34f, 0.40f, 0.50f, 1.0f);
+        GL11.glBegin(GL11.GL_LINE_LOOP);
+        vertex(-5.5f, 0.0f, -5.5f);
+        vertex(5.5f, 0.0f, -5.5f);
+        vertex(5.5f, 0.0f, 5.5f);
+        vertex(-5.5f, 0.0f, 5.5f);
+        GL11.glEnd();
+        GL11.glPopMatrix();
+    }
+
     private void drawFloorGrid() {
-        GL11.glColor4f(0.26f, 0.31f, 0.38f, 1.0f);
+        GL11.glColor4f(0.30f, 0.36f, 0.44f, 0.95f);
         GL11.glBegin(GL11.GL_LINES);
         for (int i = -5; i <= 5; i++) {
-            GL11.glVertex3f(i, 0.0f, -5.0f);
-            GL11.glVertex3f(i, 0.0f, 5.0f);
-            GL11.glVertex3f(-5.0f, 0.0f, i);
-            GL11.glVertex3f(5.0f, 0.0f, i);
+            GL11.glVertex3f(i, 0.02f, -5.0f);
+            GL11.glVertex3f(i, 0.02f, 5.0f);
+            GL11.glVertex3f(-5.0f, 0.02f, i);
+            GL11.glVertex3f(5.0f, 0.02f, i);
         }
+        GL11.glEnd();
+    }
+
+    private void drawMiniMapBackdrop() {
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glColor4f(0.13f, 0.16f, 0.24f, 1.0f);
+        GL11.glVertex3f(-7.0f, -7.0f, -18.0f);
+        GL11.glVertex3f(7.0f, -7.0f, -18.0f);
+        GL11.glColor4f(0.08f, 0.10f, 0.15f, 1.0f);
+        GL11.glVertex3f(7.0f, 7.0f, -18.0f);
+        GL11.glVertex3f(-7.0f, 7.0f, -18.0f);
+        GL11.glEnd();
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+    }
+
+    private void drawMiniMapPlate() {
+        GL11.glColor4f(0.18f, 0.22f, 0.30f, 1.0f);
+        GL11.glBegin(GL11.GL_QUADS);
+        vertex(-5.6f, 0.0f, -5.6f);
+        vertex(5.6f, 0.0f, -5.6f);
+        vertex(5.6f, 0.0f, 5.6f);
+        vertex(-5.6f, 0.0f, 5.6f);
+        GL11.glEnd();
+    }
+
+    private void drawMiniMapGrid() {
+        GL11.glColor4f(0.38f, 0.46f, 0.58f, 0.95f);
+        GL11.glBegin(GL11.GL_LINES);
+        for (int i = -5; i <= 5; i++) {
+            GL11.glVertex3f(i, 0.02f, -5.0f);
+            GL11.glVertex3f(i, 0.02f, 5.0f);
+            GL11.glVertex3f(-5.0f, 0.02f, i);
+            GL11.glVertex3f(5.0f, 0.02f, i);
+        }
+        GL11.glEnd();
+    }
+
+    private void drawMiniMapMarker() {
+        float markerSize = importedModel == null ? 0.85f : Math.min(1.2f + importedModel.meshCount() * 0.04f, 1.9f);
+        GL11.glColor4f(0.98f, 0.76f, 0.32f, 1.0f);
+        GL11.glBegin(GL11.GL_QUADS);
+        vertex(-markerSize, 0.05f, -markerSize);
+        vertex(markerSize, 0.05f, -markerSize);
+        vertex(markerSize, 0.05f, markerSize);
+        vertex(-markerSize, 0.05f, markerSize);
+        GL11.glEnd();
+
+        GL11.glColor4f(0.96f, 0.96f, 0.98f, 0.9f);
+        GL11.glBegin(GL11.GL_LINES);
+        edge(-markerSize - 0.7f, 0.06f, 0.0f, markerSize + 0.7f, 0.06f, 0.0f);
+        edge(0.0f, 0.06f, -markerSize - 0.7f, 0.0f, 0.06f, markerSize + 0.7f);
         GL11.glEnd();
     }
 

@@ -17,14 +17,16 @@ def lwjglNatives = [
     'natives-macos-arm64'
 ]
 
+def requiredJavaVersion = 26
+
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(requiredJavaVersion)
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
+    options.release = requiredJavaVersion
 }
 
 dependencies {
@@ -54,7 +56,8 @@ jar {
         attributes(
             'Main-Class': application.mainClass.get(),
             'Implementation-Title': 'Game Studio',
-            'Implementation-Version': version ?: 'dev'
+            'Implementation-Version': version ?: 'dev',
+            'Build-Java-Version': requiredJavaVersion
         )
     }
 }
