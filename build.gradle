@@ -1,0 +1,85 @@
+plugins {
+    id 'application'
+    id 'com.gradleup.shadow' version '8.3.6'
+}
+
+repositories {
+    mavenCentral()
+}
+
+def lwjglVersion = '3.3.4'
+def lwjglNatives = [
+    'natives-windows',
+    'natives-windows-arm64',
+    'natives-linux',
+    'natives-linux-arm64',
+    'natives-macos',
+    'natives-macos-arm64'
+]
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+dependencies {
+    implementation platform("org.lwjgl:lwjgl-bom:${lwjglVersion}")
+    implementation 'org.lwjgl:lwjgl'
+    implementation 'org.lwjgl:lwjgl-assimp'
+    implementation 'org.lwjgl:lwjgl-jawt'
+    implementation 'org.lwjgl:lwjgl-opengl'
+    implementation('org.lwjglx:lwjgl3-awt:0.2.3') {
+        transitive = false
+    }
+
+    lwjglNatives.each { nativeClassifier ->
+        runtimeOnly "org.lwjgl:lwjgl::${nativeClassifier}"
+        runtimeOnly "org.lwjgl:lwjgl-assimp::${nativeClassifier}"
+        runtimeOnly "org.lwjgl:lwjgl-opengl::${nativeClassifier}"
+    }
+}
+
+application {
+    mainClass = 'com.example.gamestudio.StudioLauncher'
+    applicationDefaultJvmArgs = ['-Dfile.encoding=UTF-8']
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': application.mainClass.get(),
+            'Implementation-Title': 'Game Studio',
+            'Implementation-Version': version ?: 'dev'
+        )
+    }
+}
+
+shadowJar {
+    archiveClassifier.set('')
+    mergeServiceFiles()
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('shadowJar')
+}
+
+tasks.named('startScripts') {
+    dependsOn tasks.named('shadowJar')
+}
+
+tasks.named('distTar') {
+    dependsOn tasks.named('shadowJar')
+}
+
+tasks.named('distZip') {
+    dependsOn tasks.named('shadowJar')
+}
+
+tasks.matching { it.name in ['startShadowScripts', 'shadowDistTar', 'shadowDistZip'] }.configureEach {
+    dependsOn tasks.named('jar')
+}
